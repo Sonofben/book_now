@@ -17,7 +17,7 @@
         const totalAmount = {{ total_amount }};
 
         const paystackOptions = {
-            key: 'your_paystack_public_key',
+            key: 'pk_test_6909e7f4f51a6129594046a88564a029da555696',
             email: 'customer@example.com',
             amount: totalAmount,
             currency: 'NGN',
@@ -27,7 +27,7 @@
         };
 
         const initializePaystack = () => {
-            const paystack = new Paystack('your_paystack_public_key', {
+            const paystack = new Paystack('pk_test_6909e7f4f51a6129594046a88564a029da555696', {
                 onTransactionSuccess: (transaction) => {
                     // Handle successful payment
                     alert('Payment successful! Your booking ID is: ' + bookingId);
