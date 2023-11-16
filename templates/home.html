@@ -1,0 +1,19 @@
+<!-- templates/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+</head>
+<body>
+    <h1>Booking System</h1>
+    <h2>Bookings</h2>
+    <ul>
+        {% for booking in bookings %}
+            <li>{{ booking.service_type }} - {{ booking.date }}</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('booking.book_now') }}">Book Now</a>
+</body>
+</html>

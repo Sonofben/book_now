@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Gateway</title>
+
+    <script src="https://js.paystack.co/v1/embed.js"></script>
+</head>
+<body>
+    <h1>Payment Gateway</h1>
+
+    <div id="payment-container"></div>
+
+    <script>
+        const bookingId = {{ booking_id }};
+        const totalAmount = {{ total_amount }};
+
+        const paystackOptions = {
+            key: 'your_paystack_public_key',
+            email: 'customer@example.com',
+            amount: totalAmount,
+            currency: 'NGN',
+            reference: bookingId,
+            subdomain: 'paystack.tech',
+            transaction_charges: 0
+        };
+
+        const initializePaystack = () => {
+            const paystack = new Paystack('your_paystack_public_key', {
+                onTransactionSuccess: (transaction) => {
+                    // Handle successful payment
+                    alert('Payment successful! Your booking ID is: ' + bookingId);
+                    // Send confirmation email to user
+                },
+                onTransactionError: (error) => {
+                    // Handle payment error
+                    alert('Payment failed: ' + error.message);
+                }
+            });
+
+            paystack.open(paystackOptions);
+        };
+
+        initializePaystack();
+    </script>
+</body>
+</html>
