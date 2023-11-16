@@ -5,7 +5,8 @@ from app.forms import BookingForm
 from flask_mail import Mail, Message
 from app.models import Booking, Service
 from app import db
-from app import logger
+import app
+#from app import logger
 
 booking_bp = Blueprint("booking", __name__)
 
@@ -131,6 +132,6 @@ def submit_booking_to_database(form):
         # Redirect to payment gateway
         return redirect(url_for("booking.payment_gateway", booking_id=booking_id))
     except Exception as e:
-        logger.error(str(e))
+        app.logger.error(str(e))
         flash(f"Error creating booking: {e}", "error")
         return None
