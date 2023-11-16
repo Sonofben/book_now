@@ -61,16 +61,23 @@ def payment_gateway(booking_id):
     payment_gateway = booking.payment_gateway
 
     if payment_gateway == "paystack":
-        # Redirect to Paystack payment page
-        return redirect(get_paystack_payment_url(booking_id))
+        # Verify Paystack signature
+        signature = request.args.get('signature')
+        payload = request.args.get('payload')
+        is_valid_signature = verify_paystack_signature(signature, payload)
+
+        if is_valid_signature:
+            # Redirect to Paystack payment page
+            return redirect(get_paystack_payment_url(booking_id))
+        else:
+            flash("Invalid Paystack signature", "error")
+            return redirect(url_for("booking.details", booking_id=booking_id))
     elif payment_gateway == "stripe":
         # Implement Stripe payment handling logic here
         pass
     else:
         flash(f"Payment gateway not supported for this booking: {booking.payment_gateway}", "error")
         return redirect(url_for("booking.details", booking_id=booking_id))
-
-
 
 def get_paystack_payment_url(booking_id):
     # Get Paystack payment URL for booking

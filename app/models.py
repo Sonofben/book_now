@@ -24,7 +24,7 @@ class Booking(db.Model):
     phone_number = db.Column(db.String(15), nullable=False)
 
     # Establish a relationship between Booking and Service models
-    service_id = db.Column(db.Integer, ForeignKey('service_id'))
+    service_id = db.Column(db.Integer, ForeignKey('service.id'))
     service = relationship("Service", backref="bookings")
     
 
