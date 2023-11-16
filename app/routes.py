@@ -1,4 +1,5 @@
 # app/routes.py
+# pyright: reportMissingImports=false
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from app.forms import BookingForm
 from app.models import Booking
@@ -6,7 +7,7 @@ from app import db
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from paystackapi.paystack import PaystackAPI
+from paystackapi.paystack import Paystack
 import json
 
 booking_bp = Blueprint("booking", __name__)
@@ -69,31 +70,6 @@ def payment_gateway(booking_id):
         return redirect(url_for("booking.details", booking_id=booking_id))
 
 
-@booking_bp.route("/paystack-webhook", methods=["POST"])
-def paystack_webhook():
-    # Get Paystack event data
-    event_data = json.loads(request.data)
-
-    # Verify Paystack signature
-    signature = request.headers.get('X-Paystack-Signature')
-    if not verify_paystack_signature(signature, request.data):
-        return 'Invalid signature', 400
-
-    # Handle Paystack event
-    event = event_data['event']
-    if event == 'charge.success':
-        # Retrieve booking ID from Paystack metadata
-        booking_id = event_data['data']['metadata']['booking_id']
-
-        # Update booking status in database
-        booking = Booking.query.get(booking_id)
-        booking.status = 'paid'
-        db.session.commit()
-
-        # Send confirmation email to customer
-        send_confirmation_email(booking_id)
-
-    return 'OK', 200
 
 
 def get_paystack_payment_url(booking_id):
@@ -110,8 +86,8 @@ def get_paystack_payment_url(booking_id):
 
 def verify_paystack_signature(signature, payload):
     # Verify Paystack signature using your Paystack secret key
-    paystack_secret_key = "your-paystack-secret-key"
-    paystack_api = PaystackAPI(secret_key=paystack_secret_key)
+    paystack_secret_key = "sk_test_af92a730e440949266df258c540c717ba0cc72bb"
+    paystack_api = Paystack(secret_key=paystack_secret_key)
     is_valid_signature = paystack_api.verify_signature(signature, payload)
     return is_valid_signature
 
