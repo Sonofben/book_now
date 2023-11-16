@@ -1,12 +1,13 @@
 # app/routes.py
-from mailbox import Mailbox
-from flask import Blueprint, render_template, flash, redirect, url_for
+from flask import Blueprint, render_template, flash, redirect, url_for, request
 from app.forms import BookingForm
-from flask_mail import Mail, Message
-from app.models import Booking, Service
+from app.models import Booking
 from app import db
-import app
-#from app import logger
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from paystackapi.paystack import PaystackAPI
+import json
 
 booking_bp = Blueprint("booking", __name__)
 
@@ -58,7 +59,8 @@ def payment_gateway(booking_id):
     payment_gateway = booking.payment_gateway
 
     if payment_gateway == "paystack":
-        handle_paystack_payment(booking_id)
+        # Redirect to Paystack payment page
+        return redirect(get_paystack_payment_url(booking_id))
     elif payment_gateway == "stripe":
         # Implement Stripe payment handling logic here
         pass
@@ -66,10 +68,52 @@ def payment_gateway(booking_id):
         flash(f"Payment gateway not supported for this booking: {booking.payment_gateway}", "error")
         return redirect(url_for("booking.details", booking_id=booking_id))
 
-def handle_paystack_payment(booking_id):
-    # Implement Paystack payment processing logic here
-    pass
 
+@booking_bp.route("/paystack-webhook", methods=["POST"])
+def paystack_webhook():
+    # Get Paystack event data
+    event_data = json.loads(request.data)
+
+    # Verify Paystack signature
+    signature = request.headers.get('X-Paystack-Signature')
+    if not verify_paystack_signature(signature, request.data):
+        return 'Invalid signature', 400
+
+    # Handle Paystack event
+    event = event_data['event']
+    if event == 'charge.success':
+        # Retrieve booking ID from Paystack metadata
+        booking_id = event_data['data']['metadata']['booking_id']
+
+        # Update booking status in database
+        booking = Booking.query.get(booking_id)
+        booking.status = 'paid'
+        db.session.commit()
+
+        # Send confirmation email to customer
+        send_confirmation_email(booking_id)
+
+    return 'OK', 200
+
+
+def get_paystack_payment_url(booking_id):
+    # Get Paystack payment URL for booking
+    booking = Booking.query.get(booking_id)
+    amount = booking.get_total_amount()
+    email = booking.email
+    reference = f"booking-{booking_id}"
+    paystack_public_key = "pk_test_6909e7f4f51a6129594046a88564a029da555696"
+    paystack_url = f"https://paystack.com/pay/your-paystack-key?amount={amount}&email={email}&reference={reference}"
+    return paystack_url
+
+
+
+def verify_paystack_signature(signature, payload):
+    # Verify Paystack signature using your Paystack secret key
+    paystack_secret_key = "your-paystack-secret-key"
+    paystack_api = PaystackAPI(secret_key=paystack_secret_key)
+    is_valid_signature = paystack_api.verify_signature(signature, payload)
+    return is_valid_signature
 
 def is_date_available(selected_date, selected_service_types):
     # Check date availability for each selected service type
@@ -81,33 +125,28 @@ def is_date_available(selected_date, selected_service_types):
 
     return True
 
-@booking_bp.route("/bookings/<int:booking_id>/cancel")
-def cancel_booking(booking_id):
-    booking = Booking.query.get(booking_id)
-    refund_payment_paystack = None
-    refund_payment_stripe = None
-    if booking.is_cancellable():
-        booking.cancel()
-        db.session.commit()
-
-        # Process refund if applicable
-        if booking.payment_gateway == "paystack":
-            refund_payment_paystack(booking_id)
-        elif booking.payment_gateway == "stripe":
-            refund_payment_stripe(booking_id)
-
-        return redirect(url_for("booking.history"))
-    else:
-        flash("Booking cannot be canceled.", "error")
-        return redirect(url_for("booking.details", booking_id=booking_id))
-
-
 def send_confirmation_email(booking_id):
-    booking = Booking.query.get(booking_id)
-    message = Message('Booking Confirmation', sender='noreply@example.com', recipients=[booking.email])
-    message.body = f"Dear {booking.name},\n\nYour booking has been confirmed. Booking ID: {booking_id}"
-    Mailbox.send(message)
+            # Retrieve booking details
+            booking = Booking.query.get(booking_id)
+            email = booking.email
+            booking_date = booking.date.strftime("%B %d, %Y")
+            service_type = booking.service_type
+            total_amount = booking.get_total_amount()
 
+            # Compose email message
+            message = MIMEMultipart()
+            message["From"] = "your-email@example.com"
+            message["To"] = email
+            message["Subject"] = "Booking Confirmation"
+
+            body = f"Dear Customer,\n\nThank you for booking with us. Your booking details are as follows:\n\nBooking ID: {booking_id}\nBooking Date: {booking_date}\nService Type: {service_type}\nTotal Amount: {total_amount}\n\nWe look forward to seeing you soon.\n\nBest regards,\nYour Booking Team"
+            message.attach(MIMEText(body, "plain"))
+
+            # Send email
+            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+                smtp.starttls()
+                smtp.login("your-email@example.com", "your-email-password")
+                smtp.send_message(message)
 
 def submit_booking_to_database(form):
     # Create and commit booking record to the database
@@ -116,7 +155,8 @@ def submit_booking_to_database(form):
         date=form.date.data,
         email=form.email.data,
         name=form.name.data,
-        phone_number=form.phone_number.data
+        phone_number=form.phone_number.data,
+        payment_gateway="paystack"
     )
 
     try:
@@ -124,14 +164,9 @@ def submit_booking_to_database(form):
         db.session.commit()
         booking_id = booking.id
 
-        # Send confirmation email after successful booking
-        send_confirmation_email(booking_id)
-
         flash(f"Booking successful! Booking ID: {booking_id}", "success")
 
-        # Redirect to payment gateway
-        return redirect(url_for("booking.payment_gateway", booking_id=booking_id))
+        return booking_id
     except Exception as e:
-        app.logger.error(str(e))
         flash(f"Error creating booking: {e}", "error")
         return None
