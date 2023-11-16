@@ -5,6 +5,7 @@ from app.forms import BookingForm
 from flask_mail import Mail, Message
 from app.models import Booking, Service
 from app import db
+from app import logger
 
 booking_bp = Blueprint("booking", __name__)
 
@@ -59,12 +60,14 @@ def payment_gateway(booking_id):
         handle_paystack_payment(booking_id)
     elif payment_gateway == "stripe":
         # Implement Stripe payment handling logic here
+        pass
     else:
         flash(f"Payment gateway not supported for this booking: {booking.payment_gateway}", "error")
         return redirect(url_for("booking.details", booking_id=booking_id))
 
 def handle_paystack_payment(booking_id):
     # Implement Paystack payment processing logic here
+    pass
 
 
 def is_date_available(selected_date, selected_service_types):
@@ -80,6 +83,8 @@ def is_date_available(selected_date, selected_service_types):
 @booking_bp.route("/bookings/<int:booking_id>/cancel")
 def cancel_booking(booking_id):
     booking = Booking.query.get(booking_id)
+    refund_payment_paystack = None
+    refund_payment_stripe = None
     if booking.is_cancellable():
         booking.cancel()
         db.session.commit()
@@ -126,6 +131,6 @@ def submit_booking_to_database(form):
         # Redirect to payment gateway
         return redirect(url_for("booking.payment_gateway", booking_id=booking_id))
     except Exception as e:
-        logger.error(e)
+        logger.error(str(e))
         flash(f"Error creating booking: {e}", "error")
         return None
