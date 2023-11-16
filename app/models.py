@@ -3,6 +3,11 @@
 from app import db
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
+from flask import current_app
+from flask_sqlalchemy import SQLAlchemy
+
+
+db = SQLAlchemy()
 
 class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -21,3 +26,9 @@ class Booking(db.Model):
     # Establish a relationship between Booking and Service models
     service_id = db.Column(db.Integer, ForeignKey('service_id'))
     service = relationship("Service", backref="bookings")
+    
+
+    def save(self):
+        db = current_app.db
+        db.session.add(self)
+        db.session.commit()
