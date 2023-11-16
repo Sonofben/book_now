@@ -8,6 +8,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from paystackapi.paystack import Paystack
+from flask import request, jsonify
 import json
 
 booking_bp = Blueprint("booking", __name__)
@@ -68,7 +69,6 @@ def payment_gateway(booking_id):
     else:
         flash(f"Payment gateway not supported for this booking: {booking.payment_gateway}", "error")
         return redirect(url_for("booking.details", booking_id=booking_id))
-
 
 
 
