@@ -1,14 +1,14 @@
 # app/models.py
 
 from app import db
-from sqlalchemy import Column, Integer, String, Decimal, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 
 class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    price = db.Column(db.Decimal(10, 2), nullable=False)
+    price = db.Column(db.Float(10, 2), nullable=False)
 
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
