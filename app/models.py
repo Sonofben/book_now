@@ -13,7 +13,7 @@ class Service(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    price = db.Column(db.Float(precision=10, scale=2), nullable=False)
+    price = db.Column(db.Float(precision=10, decimal_return_scale=2), nullable=False)
 
 class Booking(db.Model):
     """
