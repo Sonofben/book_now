@@ -18,7 +18,12 @@ def create_app():
     mail.init_app(app)
 
     from app.routes import booking_bp
+ 
+
+    from app.models import db as models_db
+    models_db.init_app(app)
 
     app.register_blueprint(booking_bp)
 
     return app
+

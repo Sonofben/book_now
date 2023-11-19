@@ -22,8 +22,21 @@
             amount: totalAmount,
             currency: 'NGN',
             reference: bookingId,
-            subdomain: 'paystack.tech',
-            transaction_charges: 0
+            subaccount: 'your-subaccount-code',  // Add subaccount if applicable
+            channels: ['bank', 'card', 'ussd', 'qr', 'mobile_money'],  // Add preferred payment channels
+            label: 'Your Company Name',  // Add your company name
+            metadata: {
+                custom_fields: [
+                    {
+                        display_name: 'Booking ID',
+                        variable_name: 'booking_id',
+                        value: bookingId
+                    }
+                ]
+            },
+            onClose: function () {
+                alert('Payment window closed without completing the payment.');
+            }
         };
 
         const initializePaystack = () => {

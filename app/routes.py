@@ -1,15 +1,16 @@
 # app/routes.py
 # pyright: reportMissingImports=false
+import smtplib
+import mailbox
+import json
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from app.forms import BookingForm
 from app.models import Booking
 from app import db
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from paystackapi.paystack import Paystack
-from flask import request, jsonify
-import json
+from app.service import submit_booking_to_database, is_date_available
 
 booking_bp = Blueprint("booking", __name__)
 
@@ -46,38 +47,42 @@ def book_now():
             booking_id = submit_booking_to_database(form)
             flash(f"Booking successful! Booking ID: {booking_id}", "success")
 
-            # Redirect to payment gateway
-            return redirect(url_for("booking.payment_gateway", booking_id=booking_id))
+            if booking_id and Booking:
+                flash(f"Booking successful! Booking ID: {booking_id}", "success")
 
-        else:
-            flash("This date is not available. Please select another date.", "error")
+            # Redirect to payment gateway
+                return redirect(url_for("booking.payment_gateway", booking_id=booking_id))
+
+            else:
+                flash("This date is not available. Please select another date.", "error")
 
     return render_template("book_now.html", form=form)
 
 
+
 @booking_bp.route("/payment-gateway/<int:booking_id>")
 def payment_gateway(booking_id):
+    # Retrieve the booking details from the database based on the booking_id
     booking = Booking.query.get(booking_id)
+
+    # Get the payment gateway information from the database
     payment_gateway = booking.payment_gateway
 
     if payment_gateway == "paystack":
-        # Verify Paystack signature
-        signature = request.args.get('signature')
-        payload = request.args.get('payload')
-        is_valid_signature = verify_paystack_signature(signature, payload)
+        # Generate the Paystack payment URL
+        paystack = Paystack(secret_key="your-paystack-secret-key")
+        payment_url = paystack.initialize_transaction(
+            amount=booking.total_amount,
+            email=booking.email,
+            reference=f"booking_{booking.id}"
+        )
 
-        if is_valid_signature:
-            # Redirect to Paystack payment page
-            return redirect(get_paystack_payment_url(booking_id))
-        else:
-            flash("Invalid Paystack signature", "error")
-            return redirect(url_for("booking.details", booking_id=booking_id))
-    elif payment_gateway == "stripe":
-        # Implement Stripe payment handling logic here
-        pass
+        # Redirect to the Paystack payment page
+        return redirect(payment_url)
+
     else:
-        flash(f"Payment gateway not supported for this booking: {booking.payment_gateway}", "error")
-        return redirect(url_for("booking.details", booking_id=booking_id))
+        flash("Invalid payment gateway", "error")
+        return redirect(url_for("booking.home"))
 
 def get_paystack_payment_url(booking_id):
     # Get Paystack payment URL for booking
@@ -119,17 +124,19 @@ def send_confirmation_email(booking_id):
             # Compose email message
             message = MIMEMultipart()
             message["From"] = "your-email@example.com"
-            message["To"] = email
+            message["To"] = booking.email
             message["Subject"] = "Booking Confirmation"
 
             body = f"Dear Customer,\n\nThank you for booking with us. Your booking details are as follows:\n\nBooking ID: {booking_id}\nBooking Date: {booking_date}\nService Type: {service_type}\nTotal Amount: {total_amount}\n\nWe look forward to seeing you soon.\n\nBest regards,\nYour Booking Team"
             message.attach(MIMEText(body, "plain"))
 
             # Send email
-            with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-                smtp.starttls()
-                smtp.login("your-email@example.com", "your-email-password")
-                smtp.send_message(message)
+            with smtplib.SMTP("your-smtp-server.com", 587) as server:
+                server.starttls()
+                server.login("your-email@example.com", "your-email-password")
+                server.sendmail("your-email@example.com", booking.email, message.as_string())
+
+            print("Confirmation email sent successfully!")
 
 def submit_booking_to_database(form):
     # Create and commit booking record to the database
