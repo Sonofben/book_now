@@ -1,0 +1,77 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Function to read an Excel file and calculate consumption statistics
+def analyze_hot_water_data(filename):
+  data = pd.read_excel(filename)
+
+  # Explore the data (view first few rows and data types) - Optional for debugging
+  # print(data.head())
+  # print(data.dtypes)
+
+  # ---- Data Cleaning (Optional) ----
+  # Discuss data cleaning steps with your friend based on your findings from data exploration (above).
+  # ... (your data cleaning steps here)
+
+  # Check data types (optional)
+  # If a column should be numeric but isn't, convert it using pd.to_numeric
+  # For example, assuming 'Water' should be numeric:
+  try:
+    data['Water'] = pd.to_numeric(data['Water'])
+  except:
+    print("Error converting 'Water' column to numeric. Check data format.")
+
+  # Define Covid period (replace placeholders with actual dates)
+  covid_start_date = '2020-03-01'
+  covid_end_date = '2021-12-31'
+
+  # Filter data for Covid period
+  covid_data = data[(data['Meter Reading Date'] >= covid_start_date) & (data['Meter Reading Date'] <= covid_end_date)]
+
+  # Calculate total and average daily hot water consumption during Covid period
+  total_consumption = covid_data['Water'].sum()
+  average_daily_consumption = total_consumption / len(covid_data)
+
+  return total_consumption, average_daily_consumption, covid_data
+
+# List of Excel file paths (replace with actual paths)
+file_paths = ['path/to/file1.xlsx', 'path/to/file2.xlsx', ...]
+
+# Overall statistics and Covid data storage (empty initially)
+total_consumption_all = 0
+average_daily_consumption_all = 0
+all_covid_data = pd.DataFrame()
+
+# Analyze each Excel file
+for file_path in file_paths:
+  # Get results and Covid data for this file
+  total_consumption, average_daily_consumption, covid_data_file = analyze_hot_water_data(file_path)
+
+  # Update overall statistics
+  total_consumption_all += total_consumption
+  average_daily_consumption_all += average_daily_consumption
+
+  # Append Covid data from this file (optional, for combined analysis)
+  all_covid_data = pd.concat([all_covid_data, covid_data_file])
+
+# Print overall results
+print("Total Hot Water Consumption (All Files, Covid Period):", total_consumption_all)
+print("Average Daily Hot Water Consumption (All Files, Covid Period):", average_daily_consumption_all)
+
+# ---- Visualization (using matplotlib) ----
+
+# Daily consumption time series (assuming 'Meter Reading Date' and 'Water' columns)
+plt.figure(figsize=(10, 6))
+plt.plot(all_covid_data['Meter Reading Date'], all_covid_data['Water'])
+plt.xlabel('Date')
+plt.ylabel('Hot Water Consumption')
+plt.title('Hot Water Consumption During Covid Period (All Files)')
+plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+plt.tight_layout()
+plt.show()
+
+# You can create additional charts (e.g., weekly/monthly averages) here
+# ... (your code for additional charts)
+
+# Optional: Save charts as images
+# plt.savefig('hot_water_consumption_covid.png')  # Replace with desired filename
